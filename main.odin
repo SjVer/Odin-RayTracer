@@ -75,6 +75,7 @@ get_accumulated_color :: proc(x, y: i32, color: Color) -> Color {
 	return accumulated_color
 }
 
+@(require)
 render_image :: proc() {
 	when ACCUMULATE_FRAMES {
 		if MAX_FRAME_COUNT > 0 && frame_count > MAX_FRAME_COUNT {
