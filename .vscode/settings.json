@@ -1,0 +1,8 @@
+{
+    "files.exclude": {
+        "odinfmt.json": true,
+        "ols.json": true,
+        "Raytracing": true,
+    },
+    "window.autoDetectColorScheme": true
+}
