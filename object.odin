@@ -32,8 +32,17 @@ SPHERES := [?]Sphere{
 		center = {0.5, 0, 0}, 
 		radius = 0.5,
 		material = {
-			albedo = {0.9, 0.9, 0.9, 1.0},
-			roughness = 0.8,
+			albedo = {0.9, 0.9, 0.9},
+			roughness = 0.1,
+			metalic = 0.0,
+		},
+	}, 
+	{
+		center = {-0.5, 0, 0}, 
+		radius = 0.3,
+		material = {
+			albedo = RED_ISH,
+			roughness = 1,
 			metalic = 0.0,
 		},
 	}, 
@@ -42,7 +51,7 @@ SPHERES := [?]Sphere{
 		radius = 100,
 		material = {
 			albedo = GREEN_ISH,
-			roughness = 0.1,
+			roughness = 0.9,
 			metalic = 0.0,
 		},
 	}, 

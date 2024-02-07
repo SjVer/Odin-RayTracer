@@ -52,8 +52,7 @@ ray_hit_sphere :: proc(
 	return
 }
 
-// the meat of it all
-ray_color :: proc(ray: Ray, depth := 0) -> Color {
+ray_trace :: proc(ray: Ray) -> (hit: bool, info: HitInfo) {
 	hit_anything := false
 	closest_hit := HitInfo {
 		t = math.F32_MAX,
@@ -66,14 +65,30 @@ ray_color :: proc(ray: Ray, depth := 0) -> Color {
 		}
 	}
 
-	if hit_anything {
-		color := closest_hit.material.albedo
-		if depth == MAX_SAMPLE_BOUNCES do return color
+	return hit_anything, closest_hit
+}
+
+// the meat of it all
+ray_color :: proc(ray: Ray) -> Color {
+	bounces := 0
+	contribution := Color{1, 1, 1}
+	light := Color{0, 0, 0}
+
+	ray := ray
+	for _ in 0 ..< MAX_SAMPLE_BOUNCES {
+		did_hit, hit_info := ray_trace(ray)
+		if !did_hit do break
 		
-		scattered_ray := reflect_off_mat(ray, closest_hit)
-		scattered_color := color * ray_color(scattered_ray, depth + 1)
-		return scattered_color
-	} else {
-		return BACKGROUND_COLOR
+		bounces += 1
+		contribution *= hit_info.material.albedo
+		// light += hit_info.material.emission
+		
+		scattered_ray := reflect_off_mat(ray, hit_info)
+		
+		// for next iteration
+		ray = scattered_ray
 	}
+	
+	light += BACKGROUND_COLOR * contribution
+	return light
 }

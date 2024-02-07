@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:log"
 import "core:math/linalg"
 import "core:math/rand"
+import "core:slice"
 import "core:time"
 import rl "vendor:raylib"
 
@@ -11,16 +12,18 @@ WINDOW_WIDTH :: 1000
 WINDOW_HEIGHT :: 1000
 GUI_SCALE :: 2
 
-RESOLUTION_SCALE :: 0.5
-RESOLUTION_X :: WINDOW_WIDTH * RESOLUTION_SCALE
-RESOLUTION_Y :: WINDOW_HEIGHT * RESOLUTION_SCALE
+RESOLUTION_SCALE :: 4
+RESOLUTION_X :: WINDOW_WIDTH / RESOLUTION_SCALE
+RESOLUTION_Y :: WINDOW_HEIGHT / RESOLUTION_SCALE
 
-RENDER_ONLY_ONCE :: false
 RANDOMIZED_SAMPLES :: true
 SAMPLES_PER_PIXEL :: 4
-MAX_SAMPLE_BOUNCES :: 10
-ACCUMULATE_FRAMES :: true
-MAX_FRAME_COUNT :: 100
+MAX_SAMPLE_BOUNCES :: 100
+
+RENDER := true
+RENDER_ONCE := false
+ACCUMULATE := true
+VISUALIZE_BOUNCES := false
 
 calc_uv_coord :: proc(value: f32, res: f32) -> f32 {
 	v := value
@@ -52,10 +55,7 @@ get_accumulated_color :: proc(x, y: i32, color: Color) -> Color {
 
 @(require)
 render_image :: proc() {
-	when ACCUMULATE_FRAMES {
-		if MAX_FRAME_COUNT > 0 && frame_count > MAX_FRAME_COUNT {
-			frame_count = 0
-		}
+	if ACCUMULATE {
 		if frame_count == 0 {
 			delete(accumulation)
 			accumulation = make([]Color, RESOLUTION_X * RESOLUTION_Y)
@@ -66,7 +66,7 @@ render_image :: proc() {
 	for y in 0 ..< cast(i32)RESOLUTION_Y {
 		for x in 0 ..< cast(i32)RESOLUTION_X {
 			// multi-sample the color
-			color := Color{0, 0, 0, 0}
+			color := Color{0, 0, 0}
 			for s in 0 ..< SAMPLES_PER_PIXEL {
 				u := calc_uv_coord(auto_cast x, RESOLUTION_X)
 				v := calc_uv_coord(auto_cast y, RESOLUTION_Y)
@@ -77,8 +77,13 @@ render_image :: proc() {
 			color /= SAMPLES_PER_PIXEL
 
 			// apply accumulation
-			when ACCUMULATE_FRAMES {
+			if ACCUMULATE {
 				color = get_accumulated_color(x, y, color)
+			}
+
+			if VISUALIZE_BOUNCES {
+				color =
+					WHITE - linalg.pow(WHITE - color, MAX_SAMPLE_BOUNCES / 2)
 			}
 
 			rl.DrawPixel(x, y, color_to_rl(color))
@@ -88,7 +93,8 @@ render_image :: proc() {
 
 draw_text :: proc(y: i32, msg: string, args: ..any) {
 	str := fmt.caprintf(msg, ..args)
-	rl.DrawText(str, 10, 10 + 25 * y, 20, rl.WHITE)
+	start := y < 0 ? cast(i32)WINDOW_HEIGHT - 10 : 10
+	rl.DrawText(str, 10, start + 25 * y, 20, rl.WHITE)
 	delete(str)
 }
 
@@ -117,22 +123,33 @@ main :: proc() {
 	image_target := rl.LoadRenderTexture(RESOLUTION_X, RESOLUTION_Y)
 	defer rl.UnloadRenderTexture(image_target)
 
-	first_frame := true
 	duration: time.Duration
 	for !rl.WindowShouldClose() {
+		// handle input
+		if rl.IsKeyPressed(.B) {
+			frame_count = 0
+			VISUALIZE_BOUNCES = !VISUALIZE_BOUNCES
+			RENDER_ONCE = true
+		}
+		if rl.IsKeyPressed(.SPACE) do RENDER = !RENDER
+		if rl.IsKeyPressed(.ENTER) do RENDER_ONCE = true
+		if rl.IsKeyPressed(.A) {
+			ACCUMULATE = !ACCUMULATE
+			frame_count = 0
+		}
+
 		// render the image
-		rl.BeginTextureMode(image_target)
-		{
-			rl.ClearBackground({0, 0, 0, 0})
-			if RENDER_ONLY_ONCE && first_frame || !RENDER_ONLY_ONCE {
-				first_frame = false
-				
+		if RENDER || RENDER_ONCE {
+			rl.BeginTextureMode(image_target)
+			{
+				rl.ClearBackground({0, 0, 0, 0})
+				RENDER_ONCE = false
 				start := time.now()
 				render_image()
 				duration = time.since(start)
 			}
+			rl.EndTextureMode()
 		}
-		rl.EndTextureMode()
 
 		// render it all to the window
 		rl.BeginDrawing()
@@ -150,26 +167,24 @@ main :: proc() {
 
 			// render the gui
 			{
-				rl.GuiLoadStyleDefault()
-				rl.ClearBackground({0, 0, 0, 0})
-
 				draw_text(0, "resolution: %vx%v", RESOLUTION_X, RESOLUTION_Y)
 				draw_text(
 					1,
-					"samples: %d per pixel (randomized: %v)",
+					"samples: %d per pixel%s",
 					SAMPLES_PER_PIXEL,
-					RANDOMIZED_SAMPLES,
+					RANDOMIZED_SAMPLES ? " (randomized)" : "",
 				)
 				draw_text(
 					2,
 					"render time: %01.3fms",
 					time.duration_milliseconds(duration),
 				)
-				when ACCUMULATE_FRAMES do draw_text(
-					3,
-					"accumulated frames: %d",
-					frame_count,
-				)
+				if ACCUMULATE do draw_text(3, "accumulated frames: %d", frame_count)
+
+				draw_text(-4, "press [space] to toggle rendering")
+				draw_text(-3, "press [enter] to render once")
+				draw_text(-2, "press [A] to toggle accumulation")
+				draw_text(-1, "press [B] to toggle bounce visualization")
 
 				// // draw settings
 				// rl.GuiCheckBox({10, 200, 10, 10}, "render", &render)
