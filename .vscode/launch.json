@@ -5,6 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "(Windows) Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "args": [],
+            "program": "${workspaceFolder}/Raytracing",
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "stopAtEntry": false,
+            "preLaunchTask": "build",
+        },
+        {
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",

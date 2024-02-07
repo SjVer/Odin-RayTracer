@@ -3,6 +3,7 @@
         "odinfmt.json": true,
         "ols.json": true,
         "Raytracing": true,
+        ".gitignore": true
     },
     "window.autoDetectColorScheme": true
 }
