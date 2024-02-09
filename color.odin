@@ -10,7 +10,9 @@ GREEN_ISH :: Color{0.2, 1, 0.2}
 BLUE_ISH :: Color{0.2, 0.2, 1}
 BLACK :: Color{0, 0, 0}
 NO_COLOR :: Color{0, 0, 0}
-BACKGROUND_COLOR :: Color{0.9, 0.9, 1}
+
+SKY_COLOR :: Color{0.9, 0.9, 1}
+BACKGROUND_COLOR :: SKY_COLOR
 
 color_to_rl :: proc(color: Color) -> rl.Color {
 	return rl.ColorFromNormalized({color.r, color.g, color.b, 1})

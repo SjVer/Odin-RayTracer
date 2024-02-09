@@ -34,7 +34,8 @@ SPHERES := [?]Sphere{
 		material = {
 			albedo = {0.9, 0.9, 0.9},
 			roughness = 0.1,
-			metalic = 0.0,
+			metalic = 0,
+			emission = 0,
 		},
 	}, 
 	{
@@ -43,16 +44,18 @@ SPHERES := [?]Sphere{
 		material = {
 			albedo = RED_ISH,
 			roughness = 1,
-			metalic = 0.0,
+			metalic = 0,
+			emission = 0,
 		},
-	}, 
+	},
 	{
 		center = {0, -100.5, 0}, 
 		radius = 100,
 		material = {
 			albedo = GREEN_ISH,
 			roughness = 0.9,
-			metalic = 0.0,
+			metalic = 0,
+			emission = 0,
 		},
 	}, 
 }

@@ -69,26 +69,27 @@ ray_trace :: proc(ray: Ray) -> (hit: bool, info: HitInfo) {
 }
 
 // the meat of it all
-ray_color :: proc(ray: Ray) -> Color {
-	bounces := 0
-	contribution := Color{1, 1, 1}
-	light := Color{0, 0, 0}
+ray_color :: proc(ray: Ray, depth := 0) -> Color {
+	did_hit, hit_info := ray_trace(ray)
 
-	ray := ray
-	for _ in 0 ..< MAX_SAMPLE_BOUNCES {
-		did_hit, hit_info := ray_trace(ray)
-		if !did_hit do break
-		
-		bounces += 1
-		contribution *= hit_info.material.albedo
-		// light += hit_info.material.emission
-		
-		scattered_ray := reflect_off_mat(ray, hit_info)
-		
-		// for next iteration
-		ray = scattered_ray
+	if !did_hit {
+		if VISUALIZE_BOUNCES {
+			return WHITE * cast(f32)depth / MAX_SAMPLE_BOUNCES
+		}
+		return BACKGROUND_COLOR
 	}
+
+	color := hit_info.material.albedo
+
+	light := color
+
+	if depth == MAX_SAMPLE_BOUNCES do return light
 	
-	light += BACKGROUND_COLOR * contribution
-	return light
+	scattered_ray := scatter_off_material(ray, hit_info)
+	scattered_light := ray_color(scattered_ray, depth + 1)
+	
+	if VISUALIZE_BOUNCES {
+		return scattered_light
+	}
+	return light * scattered_light
 }
