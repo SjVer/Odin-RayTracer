@@ -1,15 +1,16 @@
 package raytracing
 
 import "core:fmt"
-import "core:time"
 import "core:log"
+import "core:thread"
+import "core:time"
 import rl "vendor:raylib"
 
 WINDOW_WIDTH :: 1000
 WINDOW_HEIGHT :: 1000
 GUI_SCALE :: 2
 
-RESOLUTION_SCALE :: 1
+RESOLUTION_SCALE :: 4
 RESOLUTION_X :: WINDOW_WIDTH / RESOLUTION_SCALE
 RESOLUTION_Y :: WINDOW_HEIGHT / RESOLUTION_SCALE
 
@@ -29,32 +30,55 @@ draw_text :: proc(y: i32, msg: string, args: ..any) {
 	delete(str)
 }
 
+render_texture: rl.RenderTexture2D
+render_thread: ^thread.Thread = nil
+
+copy_image_to_render_texture :: proc() {
+	rl.BeginTextureMode(render_texture)
+
+	for y in 0 ..< cast(i32)RESOLUTION_Y {
+		for x in 0 ..< cast(i32)RESOLUTION_X {
+			color := frame_data[x + RESOLUTION_X * y]
+			rl.DrawPixel(x, y, color_to_rl(color))
+		}
+	}
+
+	rl.EndTextureMode()
+}
+
+async_render_image :: proc() {
+	if render_thread == nil && (RENDER || RENDER_ONCE) {
+		render_thread = thread.create_and_start(render_image)
+	}
+
+	if thread.is_done(render_thread) {
+		thread.join(render_thread)
+
+		copy_image_to_render_texture()
+
+		// start next render
+		if RENDER || RENDER_ONCE {
+			RENDER_ONCE = false
+
+			thread.destroy(render_thread)
+			render_thread = thread.create_and_start(render_image)
+		}
+	}
+}
+
 main :: proc() {
 	context.logger = log.create_console_logger()
-
 	rl.SetTraceLogLevel(.WARNING)
+	rl.SetConfigFlags({.VSYNC_HINT})
+
 	rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "raytracing")
-	defer rl.CloseWindow()
 	rl.ClearWindowState({.WINDOW_RESIZABLE})
+	rl.SetTargetFPS(60)
+	defer rl.CloseWindow()
 
-	// setup gui
-	// {
-	// 	rl.GuiSetStyle(
-	// 		auto_cast rl.GuiControl.DEFAULT,
-	// 		auto_cast rl.GuiDefaultProperty.TEXT_SIZE,
-	// 		20,
-	// 	)
-	// 	font := rl.LoadFontEx(
-	// 		"C:\\Windows\\Fonts\\JetBrainsMonoNerdFont-Regular.ttf",
-	// 		100, nil, 0
-	// 	)
-	// 	rl.GuiSetFont(font)
-	// }
+	render_texture = rl.LoadRenderTexture(RESOLUTION_X, RESOLUTION_Y)
+	defer rl.UnloadRenderTexture(render_texture)
 
-	image_target := rl.LoadRenderTexture(RESOLUTION_X, RESOLUTION_Y)
-	defer rl.UnloadRenderTexture(image_target)
-
-	duration: time.Duration
 	for !rl.WindowShouldClose() {
 		// handle input
 		if rl.IsKeyPressed(.B) {
@@ -70,17 +94,7 @@ main :: proc() {
 		}
 
 		// render the image
-		if RENDER || RENDER_ONCE {
-			rl.BeginTextureMode(image_target)
-			{
-				rl.ClearBackground({0, 0, 0, 0})
-				RENDER_ONCE = false
-				start := time.now()
-				render_image()
-				duration = time.since(start)
-			}
-			rl.EndTextureMode()
-		}
+		async_render_image()
 
 		// render it all to the window
 		rl.BeginDrawing()
@@ -88,7 +102,7 @@ main :: proc() {
 			rl.ClearBackground(rl.BLACK)
 
 			rl.DrawTexturePro(
-				image_target.texture,
+				render_texture.texture,
 				{0, 0, RESOLUTION_X, RESOLUTION_Y},
 				{0, 0, WINDOW_WIDTH, WINDOW_HEIGHT},
 				{0, 0},
@@ -108,9 +122,9 @@ main :: proc() {
 				draw_text(
 					2,
 					"render time: %01.3fms",
-					time.duration_milliseconds(duration),
+					time.duration_milliseconds(frame_duration),
 				)
-				if ACCUMULATE do draw_text(3, "accumulated frames: %d", frame_count)
+				if ACCUMULATE do draw_text(3, "accumulated frames: %d", frame_count - 1)
 
 				draw_text(-4, "press [space] to toggle rendering")
 				draw_text(-3, "press [enter] to render once")
@@ -123,4 +137,7 @@ main :: proc() {
 		}
 		rl.EndDrawing()
 	}
+
+	thread.terminate(render_thread, 0)
+	thread.destroy(render_thread)
 }

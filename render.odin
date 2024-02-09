@@ -2,7 +2,8 @@ package raytracing
 
 import "core:math/linalg"
 import "core:math/rand"
-import rl "vendor:raylib"
+import "core:time"
+import "core:slice"
 
 calc_uv_coord :: proc(value: f32, res: f32) -> f32 {
 	v := value
@@ -20,27 +21,31 @@ get_ray_from_camera :: proc(u, v: f32) -> Ray {
 }
 
 frame_count := 0
-accumulation: []Color
+accum_data: []Color
+frame_data: []Color = make([]Color, RESOLUTION_X * RESOLUTION_Y)
+frame_duration: time.Duration
 
 get_accumulated_color :: proc(x, y: i32, color: Color) -> Color {
-	accumulation[x + y * RESOLUTION_X] += color
+	accum_data[x + y * RESOLUTION_X] += color
 
-	accumulated_color := accumulation[x + y * RESOLUTION_X]
+	accumulated_color := accum_data[x + y * RESOLUTION_X]
 	accumulated_color /= cast(f32)frame_count
 	accumulated_color = clamp_color(accumulated_color)
 
 	return accumulated_color
 }
 
-@(require)
 render_image :: proc() {
 	if ACCUMULATE {
 		if frame_count == 0 {
-			delete(accumulation)
-			accumulation = make([]Color, RESOLUTION_X * RESOLUTION_Y)
+			delete(accum_data)
+			accum_data = make([]Color, RESOLUTION_X * RESOLUTION_Y)
 		}
-		frame_count += 1
+        frame_count += 1
 	}
+
+	slice.fill(frame_data, BLACK)
+    start_time := time.now()
 
 	for y in 0 ..< cast(i32)RESOLUTION_Y {
 		for x in 0 ..< cast(i32)RESOLUTION_X {
@@ -55,17 +60,20 @@ render_image :: proc() {
 			}
 			color /= SAMPLES_PER_PIXEL
 
-			// apply accumulation
+			if VISUALIZE_BOUNCES {
+				// remap it to a curve for better readability
+				G :: MAX_SAMPLE_BOUNCES / 2
+				color = WHITE - linalg.pow(WHITE - color, G)
+			}
+
+			// apply accum_data
 			if ACCUMULATE {
 				color = get_accumulated_color(x, y, color)
 			}
 
-			if VISUALIZE_BOUNCES {
-				color =
-					WHITE - linalg.pow(WHITE - color, MAX_SAMPLE_BOUNCES / 2)
-			}
-
-			rl.DrawPixel(x, y, color_to_rl(color))
+			frame_data[x + RESOLUTION_X * y] = color
 		}
 	}
+
+    frame_duration = time.since(start_time)   
 }
