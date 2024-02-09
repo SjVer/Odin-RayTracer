@@ -12,7 +12,7 @@ BLACK :: Color{0, 0, 0}
 NO_COLOR :: Color{0, 0, 0}
 
 SKY_COLOR :: Color{0.9, 0.9, 1}
-BACKGROUND_COLOR :: SKY_COLOR
+BACKGROUND_COLOR :: BLACK
 
 color_to_rl :: proc(color: Color) -> rl.Color {
 	return rl.ColorFromNormalized({color.r, color.g, color.b, 1})

@@ -6,27 +6,6 @@ Sphere :: struct {
 	material: Material,
 }
 
-// ray_hit_object :: proc(
-// 	object: any,
-// 	ray: Ray,
-// 	t_max: f32,
-// ) -> (
-// 	hit: bool,
-// 	info: HitInfo,
-// ) {
-// 	switch object in object {
-// 		case Sphere:
-// 			hit, info = ray_hit_sphere(object, ray, t_max)
-// 		case:
-// 			panic("invalid object type")
-// 	}
-// 	return
-// }
-
-// OBJECTS := [dynamic]any {
-// 	Sphere{{0, 0, 0}, 0.5}
-// }
-
 SPHERES := [?]Sphere{
 	{
 		center = {0.5, 0, 0}, 
@@ -45,7 +24,7 @@ SPHERES := [?]Sphere{
 			albedo = RED_ISH,
 			roughness = 1,
 			metalic = 0,
-			emission = 0,
+			emission = 4.0,
 		},
 	},
 	{

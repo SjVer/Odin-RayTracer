@@ -68,28 +68,36 @@ ray_trace :: proc(ray: Ray) -> (hit: bool, info: HitInfo) {
 	return hit_anything, closest_hit
 }
 
+depth_to_bounce_viz_color :: proc(depth: int) -> Color {
+	return WHITE * cast(f32)depth / MAX_SAMPLE_BOUNCES
+}
+
 // the meat of it all
 ray_color :: proc(ray: Ray, depth := 0) -> Color {
 	did_hit, hit_info := ray_trace(ray)
+	using hit_info
 
+	// if we didn't hit anything we 'hit' the background
 	if !did_hit {
-		if VISUALIZE_BOUNCES {
-			return WHITE * cast(f32)depth / MAX_SAMPLE_BOUNCES
-		}
+		if VISUALIZE_BOUNCES do return depth_to_bounce_viz_color(depth)
 		return BACKGROUND_COLOR
 	}
 
-	color := hit_info.material.albedo
+	// calculate the light the ray catches from just the hit surface
+	color := material.albedo
+	emitted_light := material.emission * material.albedo
 
-	light := color
+	if depth == MAX_SAMPLE_BOUNCES {
+		if VISUALIZE_BOUNCES do return depth_to_bounce_viz_color(depth)
+		return color * emitted_light
+	}
 
-	if depth == MAX_SAMPLE_BOUNCES do return light
-	
+	// calculate the light scattered off the hit surface into the ray
 	scattered_ray := scatter_off_material(ray, hit_info)
 	scattered_light := ray_color(scattered_ray, depth + 1)
-	
+
 	if VISUALIZE_BOUNCES {
 		return scattered_light
 	}
-	return light * scattered_light
+	return emitted_light + color * scattered_light
 }
